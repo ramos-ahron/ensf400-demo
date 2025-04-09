@@ -266,8 +266,8 @@ check.dependsOn(jacocoTestReport)
 
 sonarqube {
     properties {
-        property "sonar.projectKey", "$projectname"
-        property "sonar.projectName", "$projectname"
+        property "sonar.projectKey", "ensf400-demo"
+        property "sonar.projectName", "ensf400-demo"
         property "sonar.projectDescription", "A demonstration of a web application with good test coverage and best practices"
         property "sonar.sources", "src/main/java"
         property "sonar.tests", "src/test/java,src/integration_test/java,src/bdd_test/java"
@@ -276,6 +276,7 @@ sonarqube {
         property "sonar.coverage.jacoco.xmlReportPaths", "build/jacoco/jacoco.xml"
         property "sonar.login", "admin"
         property "sonar.password", "password"
+        property 'sonar.host.url', 'http://sonarqube:9000'
     }
 }
 
@@ -581,7 +582,8 @@ dependencyCheck {
     showSummary = false
     autoUpdate = true
     cveValidForHours = 24 * 30 * 12 // about a year.
-    format = 'HTML' // options are  (HTML, XML, CSV, JSON, VULN, ALL).
+    formats = ['HTML', 'XML']
+    suppressionFile = 'owasp-suppressions.xml'
     failBuildOnCVSS = 8 // see https://www.first.org/cvss/specification-document#5-Qualitative-Severity-Rating-Scale
 }
 
