@@ -3,7 +3,7 @@ pipeline {
 
   environment {
     // Default Java Home for Jenkins
-    JAVA_HOME = '/usr/lib/jvm/java-17-openjdk'
+    JAVA_HOME = '/usr/lib/jvm/java-11-openjdk'
     PATH = "${JAVA_HOME}/bin:${PATH}"
     // GitHub credentials
     GITHUB_CREDENTIALS = credentials('github-credentials')
