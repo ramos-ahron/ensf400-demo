@@ -32,12 +32,15 @@ pipeline {
     // Stage 3: Static Analysis with SonarQube
     stage('Static Analysis') {
       steps {
-        sh './gradlew sonarqube \
-            -Dsonar.projectKey=my-project \
-            -Dsonar.projectName="My Project" \
-            -Dsonar.host.url=http://sonarqube:9000 \
-            -Dsonar.login="admin" \
-            -Dsonar.password="ensf400"'
+        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+          sh '''
+            ./gradlew sonarqube \
+              -Dsonar.projectKey=my-project \
+              -Dsonar.projectName="My Project" \
+              -Dsonar.host.url=http://sonarqube:9000 \
+              -Dsonar.login=$SONAR_TOKEN
+          '''
+        }
       }
     }
   }
