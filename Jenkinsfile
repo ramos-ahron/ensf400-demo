@@ -1,24 +1,41 @@
+// This jenkinsfile is used to run CI/CD on my local (Windows) box, no VM's needed.
+
 pipeline {
+
   agent any
 
-  environment {
-    // Default Java Home for Jenkins
-    JAVA_HOME = '/usr/lib/jvm/java-11-openjdk'
-    PATH = "${JAVA_HOME}/bin:${PATH}"
-    // GitHub credentials
-    GITHUB_CREDENTIALS = credentials('github-credentials')
-  }
+   environment {
+        // This is set so that the Python API tests will recognize it
+        // and go through the Zap proxy waiting at 9888
+        HTTP_PROXY = 'http://127.0.0.1:9888'
+        // Default Java Home for Jenkins (JDK 17)
+        JAVA_HOME = '/usr/lib/jvm/java-17-openjdk'
+        PATH = "${JAVA_HOME}/bin:${PATH}"
+   }
 
   stages {
-    // Stage 1: Build the container/application
+
+    // build the war file (the binary).  This is the only
+    // place that happens.
     stage('Build') {
+      environment {
+        // Override JAVA_HOME to use JDK 11 for this stage
+        JAVA_HOME = '/usr/lib/jvm/java-11-openjdk'
+        PATH = "${JAVA_HOME}/bin:${PATH}"
+      }
       steps {
         sh './gradlew clean assemble'
       }
     }
 
-    // Stage 2: Run unit tests
+    // run all the unit tests - these do not require anything else
+    // to be running and most run very quickly.
     stage('Unit Tests') {
+      environment {
+        // Override JAVA_HOME to use JDK 11 for this stage
+        JAVA_HOME = '/usr/lib/jvm/java-11-openjdk'
+        PATH = "${JAVA_HOME}/bin:${PATH}"
+      }
       steps {
         sh './gradlew test'
       }
@@ -29,49 +46,56 @@ pipeline {
       }
     }
 
-    // Stage 3: Static Analysis with SonarQube
-    stage('Static Analysis') {
+    // run the tests which require connection to a
+    // running database.
+    stage('Database Tests') {
+      environment {
+        // Override JAVA_HOME to use JDK 11 for this stage
+        JAVA_HOME = '/usr/lib/jvm/java-11-openjdk'
+        PATH = "${JAVA_HOME}/bin:${PATH}"
+      }
       steps {
-        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-          sh '''
-            ./gradlew sonarqube \
-              -Dsonar.projectKey=my-project \
-              -Dsonar.projectName="My Project" \
-              -Dsonar.host.url=http://sonarqube:9000 \
-              -Dsonar.login=$SONAR_TOKEN
-          '''
+        sh './gradlew integrate'
+      }
+      post {
+        always {
+          junit 'build/test-results/integrate/*.xml'
         }
       }
     }
-  }
 
-  post {
-    success {
-      echo 'Build succeeded! Updating GitHub pull request status.'
-      withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-        sh '''
-          if [ -n "$CHANGE_ID" ]; then
-            curl -s -X POST \
-              -H "Authorization: token ${GITHUB_TOKEN}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              https://api.github.com/repos/${CHANGE_REPOSITORY}/statuses/${GIT_COMMIT} \
-              -d '{"state":"success","context":"jenkins/build","description":"Build succeeded!","target_url":"'${BUILD_URL}'"}'
-          fi
-        '''
+    // These are the Behavior Driven Development (BDD) tests
+    // See the files in src/bdd_test
+    // These tests do not require a running system.
+    stage('BDD Tests') {
+      environment {
+        // Override JAVA_HOME to use JDK 11 for this stage
+        JAVA_HOME = '/usr/lib/jvm/java-11-openjdk'
+        PATH = "${JAVA_HOME}/bin:${PATH}"
       }
+      steps {
+        sh './gradlew generateCucumberReports'
+        // generate the code coverage report for jacoco
+        sh './gradlew jacocoTestReport'
+      }
+      post {
+          always {
+            junit 'build/test-results/bdd/*.xml'
+          }
+        }
     }
-    failure {
-      echo 'Build failed! Updating GitHub pull request status.'
-      withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-        sh '''
-          if [ -n "$CHANGE_ID" ]; then
-            curl -s -X POST \
-              -H "Authorization: token ${GITHUB_TOKEN}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              https://api.github.com/repos/${CHANGE_REPOSITORY}/statuses/${GIT_COMMIT} \
-              -d '{"state":"failure","context":"jenkins/build","description":"Build failed!","target_url":"'${BUILD_URL}'"}'
-          fi
-        '''
+
+    // Runs an analysis of the code, looking for any
+    // patterns that suggest potential bugs.
+    stage('Static Analysis') {
+        environment {
+          // Override JAVA_HOME to use JDK 11 for this stage
+          JAVA_HOME = '/usr/lib/jvm/java-11-openjdk'
+          PATH = "${JAVA_HOME}/bin:${PATH}"
+        }      
+      
+      steps{
+        sh './gradlew sonarqube -Dsonar.host.url=https://ideal-space-goggles-699xwwqvjj4ghxv6v-9000.app.github.dev/ -Dsonar.login="admin" -Dsonar.password="adminPassword#1"'
       }
     }
   }
