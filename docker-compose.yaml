@@ -50,4 +50,3 @@ volumes:
   jenkins_home:
   sonarqube_data:
   db_data:
-
