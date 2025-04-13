@@ -30,30 +30,44 @@ pipeline {
     }
 
     // Stage 3: Static Analysis with SonarQube
-    stage('Static Analysis') {
-      steps {
-        sh '''
-          max_attempts=30
-          attempt=0
-          until curl -s -f http://sonarqube:9000/api/system/status > /dev/null || [ $attempt -eq $max_attempts ]
-          do
-            echo "Waiting for SonarQube to be available... ($(( attempt++ ))/$max_attempts)"
-            sleep 10
-          done
-          if [ $attempt -eq $max_attempts ]; then
-            echo "SonarQube did not become available in time"
-            exit 1
-          fi
-        '''
-        sh './gradlew sonarqube \
-            -Dsonar.projectKey=my-project \
-            -Dsonar.projectName="My Project" \
-            -Dsonar.host.url=http://sonarqube:9000 \
-            -Dsonar.login="admin" \
-            -Dsonar.password="ensf400"'
-      }
-    }
-  }
+        stage('Static Analysis') {
+            stages {
+                stage('SonarQube Auth') {
+                    steps {
+                        script {
+                            sh 'echo "Waiting for SonarQube to start..." && sleep 80'
+
+                            // Remotely change login username and password
+                            sh """
+                        curl -X POST "http://${IP_ADDRESS}:9000/api/users/change_password" \
+                        -H "Content-Type: application/x-www-form-urlencoded" \
+                        -d "login=admin&previousPassword=admin&password=password" \
+                        -u admin:admin
+                    """
+                        }
+                    }
+                }
+
+                stage('SonarQube Analysis') {
+                    agent {
+                        docker {
+                            image 'gradle:7.6.1-jdk11'
+                            reuseNode true  // This ensures the same workspace is used
+                        }
+                    }
+                    steps {
+                        script {
+                            sh "./gradlew sonarqube -Dsonar.host.url=http://${IP_ADDRESS}:9000"
+                        }
+                    }
+                    post {
+                        success {
+                            sh 'echo SonarQube results available at 9000/?id=Demo'
+                        }
+                    }
+                }
+            }
+        }
 
   post {
     success {
