@@ -32,7 +32,7 @@ pipeline {
     // Stage 3: Static Analysis with SonarQube
     stage('Static Analysis') {
       steps {
-        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+        withCredentials([string(credentialsId: 'jenkins', variable: 'SONAR_TOKEN')]) {
           sh '''
             ./gradlew sonarqube \
               -Dsonar.projectKey=my-project \
