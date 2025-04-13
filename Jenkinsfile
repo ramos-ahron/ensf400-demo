@@ -32,6 +32,19 @@ pipeline {
     // Stage 3: Static Analysis with SonarQube
     stage('Static Analysis') {
       steps {
+        sh '''
+          max_attempts=30
+          attempt=0
+          until curl -s -f http://sonarqube:9000/api/system/status > /dev/null || [ $attempt -eq $max_attempts ]
+          do
+            echo "Waiting for SonarQube to be available... ($(( attempt++ ))/$max_attempts)"
+            sleep 10
+          done
+          if [ $attempt -eq $max_attempts ]; then
+            echo "SonarQube did not become available in time"
+            exit 1
+          fi
+        '''
         sh './gradlew sonarqube \
             -Dsonar.projectKey=my-project \
             -Dsonar.projectName="My Project" \
