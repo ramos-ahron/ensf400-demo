@@ -7,7 +7,7 @@ pipeline {
     // GitHub credentials
     GITHUB_CREDENTIALS = credentials('github-credentials')
     // SonarQube server IP address
-    IP_ADDRESS = '192.168.1.100'  // Replace with your actual IP address
+    IP_ADDRESS = '10.0.1.34'  // Replace with your actual IP address
   }
   stages {
     // Stage 1: Build the container/application
